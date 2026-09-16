@@ -778,8 +778,7 @@ export default function Home() {
             <DownloadBadges
               attendees={attendees}
               badgeFile={badgeFile}
-              configuration={
-                configuration
+              configuration={configuration
               }
             />
           )}
