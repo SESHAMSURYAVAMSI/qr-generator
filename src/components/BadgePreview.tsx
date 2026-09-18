@@ -243,9 +243,10 @@ export default function BadgePreview({
             );
 
           await page.render({
-            canvasContext: context,
-            viewport,
-          }).promise;
+  canvasContext: context,
+  canvas,
+  viewport,
+}).promise;
 
           const dataUrl =
             canvas.toDataURL(

@@ -284,10 +284,10 @@ export default function DownloadBadges({
           );
 
         await page.render({
-          canvasContext:
-            context,
-          viewport,
-        }).promise;
+  canvasContext: context,
+  canvas,
+  viewport,
+}).promise;
 
         return {
           dataUrl:
