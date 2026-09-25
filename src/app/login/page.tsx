@@ -62,7 +62,7 @@ function LoginForm() {
       }
 
       const callbackUrl =
-        searchParams.get("callbackUrl") || "/";
+        searchParams.get("callbackUrl") || "/events";
 
       router.replace(callbackUrl);
       router.refresh();
