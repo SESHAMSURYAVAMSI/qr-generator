@@ -9,6 +9,7 @@ export interface Attendee {
 
 export type QRField =
   | "registrationNumber"
+  | "name"
   | "code"
   | "custom";
 

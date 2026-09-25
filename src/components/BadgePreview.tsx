@@ -1,8 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
 import QRCode from "qrcode";
-import { FileImage, Loader2 } from "lucide-react";
+
+import {
+  FileImage,
+  Loader2,
+} from "lucide-react";
 
 import type {
   Attendee,
@@ -10,16 +19,45 @@ import type {
 } from "@/types/badge";
 
 interface BadgePreviewProps {
-  attendee?: Attendee;
-  configuration: BadgeConfiguration;
+  attendee?: Attendee | null;
+  configuration?: BadgeConfiguration;
   badgeFile: File | null;
 }
+
+/*
+ * ============================================================
+ * DEFAULT CONFIGURATION
+ * ============================================================
+ *
+ * This prevents runtime errors if the parent temporarily
+ * passes undefined configuration during rendering.
+ */
+
+const DEFAULT_CONFIGURATION: BadgeConfiguration = {
+  name: true,
+  registrationNumber: true,
+  qr: true,
+  category: false,
+  qrField: "registrationNumber",
+  customQRField: "",
+};
 
 export default function BadgePreview({
   attendee,
   configuration,
   badgeFile,
 }: BadgePreviewProps) {
+  /*
+   * Always use a valid configuration.
+   *
+   * If the parent sends undefined for any reason,
+   * the preview will safely use DEFAULT_CONFIGURATION.
+   */
+
+  const safeConfiguration =
+    configuration ??
+    DEFAULT_CONFIGURATION;
+
   const [badgeImage, setBadgeImage] =
     useState<string | null>(null);
 
@@ -34,50 +72,193 @@ export default function BadgePreview({
 
   /*
    * ============================================================
+   * NORMALIZE FIELD NAME
+   * ============================================================
+   */
+
+  const normalizeFieldName = (
+    value: string
+  ) => {
+    return value
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .replace(/[._-]+/g, " ")
+      .trim();
+  };
+
+  /*
+   * ============================================================
+   * GET CUSTOM FIELD VALUE
+   * ============================================================
+   */
+
+  const getCustomFieldValue = (
+    currentAttendee: Attendee,
+    fieldName?: string
+  ) => {
+    const requestedField =
+      fieldName?.trim();
+
+    if (!requestedField) {
+      return "";
+    }
+
+    /*
+     * First try exact field name.
+     */
+
+    const exactValue =
+      currentAttendee[
+        requestedField
+      ];
+
+    if (exactValue?.trim()) {
+      return exactValue.trim();
+    }
+
+    /*
+     * Then try normalized field name.
+     *
+     * Example:
+     *
+     * Excel:
+     * "Email Address"
+     *
+     * Selected:
+     * "email address"
+     *
+     * Both will match.
+     */
+
+    const normalizedTarget =
+      normalizeFieldName(
+        requestedField
+      );
+
+    const matchingKey =
+      Object.keys(
+        currentAttendee
+      ).find(
+        (key) =>
+          normalizeFieldName(
+            key
+          ) === normalizedTarget
+      );
+
+    if (matchingKey) {
+      return (
+        currentAttendee[
+          matchingKey
+        ]?.trim() || ""
+      );
+    }
+
+    return "";
+  };
+
+  /*
+   * ============================================================
    * QR VALUE
    * ============================================================
    */
 
   const qrValue = useMemo(() => {
+    /*
+     * No attendee selected.
+     */
+
     if (!attendee) {
       return "PREVIEW-QR-001";
     }
 
+    /*
+     * ========================================================
+     * REGISTRATION NUMBER
+     * ========================================================
+     */
+
     if (
-      configuration.qrField ===
+      safeConfiguration.qrField ===
       "registrationNumber"
     ) {
       return (
         attendee.registrationNumber?.trim() ||
-        "PREVIEW-QR-001"
+        "NO-REGISTRATION"
       );
     }
 
+    /*
+     * ========================================================
+     * ATTENDEE NAME
+     * ========================================================
+     */
+
     if (
-      configuration.qrField === "code"
+      safeConfiguration.qrField ===
+      "name"
+    ) {
+      return (
+        attendee.name?.trim() ||
+        "NO-NAME"
+      );
+    }
+
+    /*
+     * ========================================================
+     * ATTENDEE CODE
+     * ========================================================
+     */
+
+    if (
+      safeConfiguration.qrField ===
+      "code"
     ) {
       return (
         attendee.code?.trim() ||
-        "PREVIEW-QR-001"
+        "NO-CODE"
       );
     }
 
-    if (
-      configuration.qrField === "custom"
-    ) {
-      const customField =
-        configuration.customQRField?.trim();
+    /*
+     * ========================================================
+     * CUSTOM FIELD
+     * ========================================================
+     */
 
-      if (customField) {
-        return (
-          attendee[customField]?.trim() ||
-          "PREVIEW-QR-001"
+    if (
+      safeConfiguration.qrField ===
+      "custom"
+    ) {
+      const customValue =
+        getCustomFieldValue(
+          attendee,
+          safeConfiguration.customQRField
         );
+
+      if (customValue) {
+        return customValue;
       }
+
+      if (
+        !safeConfiguration.customQRField?.trim()
+      ) {
+        return "SELECT-CUSTOM-FIELD";
+      }
+
+      return "NO-CUSTOM-VALUE";
     }
 
+    /*
+     * Safety fallback.
+     */
+
     return "PREVIEW-QR-001";
-  }, [attendee, configuration]);
+  }, [
+    attendee,
+    safeConfiguration.qrField,
+    safeConfiguration.customQRField,
+  ]);
 
   /*
    * ============================================================
@@ -89,10 +270,23 @@ export default function BadgePreview({
     let cancelled = false;
 
     async function generateQR() {
-      if (!configuration.qr) {
+      /*
+       * QR disabled.
+       */
+
+      if (!safeConfiguration.qr) {
         setQrImage(null);
         return;
       }
+
+      /*
+       * Clear previous QR immediately.
+       *
+       * This prevents the old QR from remaining visible
+       * while the new QR is being generated.
+       */
+
+      setQrImage(null);
 
       try {
         const dataUrl =
@@ -101,7 +295,8 @@ export default function BadgePreview({
             {
               width: 500,
               margin: 2,
-              errorCorrectionLevel: "H",
+              errorCorrectionLevel:
+                "H",
             }
           );
 
@@ -127,22 +322,25 @@ export default function BadgePreview({
     };
   }, [
     qrValue,
-    configuration.qr,
+    safeConfiguration.qr,
   ]);
 
   /*
    * ============================================================
-   * LOAD BADGE
+   * LOAD BADGE TEMPLATE
    * ============================================================
    */
 
   useEffect(() => {
     let cancelled = false;
-    let objectUrl: string | null = null;
+    let objectUrl: string | null =
+      null;
 
     async function loadBadge() {
       if (!badgeFile) {
         setBadgeImage(null);
+        setPdfError(null);
+        setLoadingBadge(false);
         return;
       }
 
@@ -155,14 +353,20 @@ export default function BadgePreview({
           badgeFile.type.toLowerCase();
 
         /*
-         * IMAGE
+         * ======================================================
+         * IMAGE TEMPLATE
+         * ======================================================
          */
 
         if (
-          fileType === "image/png" ||
-          fileType === "image/jpeg" ||
-          fileType === "image/jpg" ||
-          fileType === "image/webp"
+          fileType ===
+            "image/png" ||
+          fileType ===
+            "image/jpeg" ||
+          fileType ===
+            "image/jpg" ||
+          fileType ===
+            "image/webp"
         ) {
           objectUrl =
             URL.createObjectURL(
@@ -179,7 +383,9 @@ export default function BadgePreview({
         }
 
         /*
-         * PDF
+         * ======================================================
+         * PDF TEMPLATE
+         * ======================================================
          */
 
         if (
@@ -243,10 +449,10 @@ export default function BadgePreview({
             );
 
           await page.render({
-  canvasContext: context,
-  canvas,
-  viewport,
-}).promise;
+            canvasContext: context,
+            canvas,
+            viewport,
+          }).promise;
 
           const dataUrl =
             canvas.toDataURL(
@@ -300,7 +506,7 @@ export default function BadgePreview({
 
   /*
    * ============================================================
-   * DETECT LONG NAME
+   * NAME
    * ============================================================
    */
 
@@ -309,11 +515,9 @@ export default function BadgePreview({
     "Attendee Name";
 
   /*
-   * This controls whether the name
-   * is likely to occupy two lines.
-   *
-   * Long names get extra vertical
-   * space below them.
+   * ============================================================
+   * LONG NAME
+   * ============================================================
    */
 
   const isLongName =
@@ -416,25 +620,9 @@ export default function BadgePreview({
               NAME
           ================================================== */}
 
-          {configuration.name && (
-            <div
-              className="
-                absolute
-                left-[8%]
-                top-[51%]
-                w-[84%]
-                text-center
-              "
-            >
-              <p
-                className="
-                  break-words
-                  text-[clamp(13px,3vw,25px)]
-                  font-bold
-                  leading-[1.12]
-                  text-black
-                "
-              >
+          {safeConfiguration.name && (
+            <div className="absolute left-[8%] top-[51%] w-[84%] text-center">
+              <p className="break-words text-[clamp(13px,3vw,25px)] font-bold leading-[1.12] text-black">
                 {name}
               </p>
             </div>
@@ -444,7 +632,7 @@ export default function BadgePreview({
               REGISTRATION NUMBER
           ================================================== */}
 
-          {configuration.registrationNumber && (
+          {safeConfiguration.registrationNumber && (
             <div
               className={`
                 absolute
@@ -458,14 +646,7 @@ export default function BadgePreview({
                 }
               `}
             >
-              <p
-                className="
-                  text-[clamp(10px,2vw,17px)]
-                  font-medium
-                  leading-tight
-                  text-zinc-700
-                "
-              >
+              <p className="text-[clamp(10px,2vw,17px)] font-medium leading-tight text-zinc-700">
                 {attendee?.registrationNumber ||
                   "Registration No."}
               </p>
@@ -473,10 +654,10 @@ export default function BadgePreview({
           )}
 
           {/* ==================================================
-              QR
+              QR CODE
           ================================================== */}
 
-          {configuration.qr &&
+          {safeConfiguration.qr &&
             qrImage && (
               <div
                 className={`
@@ -494,7 +675,7 @@ export default function BadgePreview({
                 <div className="aspect-square w-full bg-white p-[2%]">
                   <img
                     src={qrImage}
-                    alt={`QR code for ${qrValue}`}
+                    alt={`QR code containing ${qrValue}`}
                     className="block h-full w-full"
                     draggable={false}
                   />
@@ -506,26 +687,10 @@ export default function BadgePreview({
               CATEGORY
           ================================================== */}
 
-          {configuration.category &&
+          {safeConfiguration.category &&
             attendee?.category?.trim() && (
-              <div
-                className="
-                  absolute
-                  left-[8%]
-                  top-[88%]
-                  w-[84%]
-                  text-center
-                "
-              >
-                <p
-                  className="
-                    text-[clamp(9px,1.7vw,15px)]
-                    font-semibold
-                    uppercase
-                    tracking-wide
-                    text-zinc-700
-                  "
-                >
+              <div className="absolute left-[8%] top-[88%] w-[84%] text-center">
+                <p className="text-[clamp(9px,1.7vw,15px)] font-semibold uppercase tracking-wide text-zinc-700">
                   {attendee.category}
                 </p>
               </div>
@@ -535,16 +700,35 @@ export default function BadgePreview({
 
       </div>
 
-      {/* QR VALUE */}
+      {/* ======================================================
+          QR VALUE
+      ====================================================== */}
 
-      {configuration.qr && (
+      {safeConfiguration.qr && (
         <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-950">
 
-          <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
-            QR Value
-          </p>
+          <div className="flex items-center justify-between gap-3">
 
-          <p className="mt-1 truncate font-mono text-sm font-semibold">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+              QR Value
+            </p>
+
+            <span className="rounded-full bg-emerald-50 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
+              {safeConfiguration.qrField ===
+              "registrationNumber"
+                ? "Registration"
+                : safeConfiguration.qrField ===
+                  "name"
+                ? "Name"
+                : safeConfiguration.qrField ===
+                  "code"
+                ? "Code"
+                : "Custom"}
+            </span>
+
+          </div>
+
+          <p className="mt-1 break-all font-mono text-sm font-semibold">
             {qrValue}
           </p>
 

@@ -4,7 +4,6 @@ import { useState } from "react";
 import jsPDF from "jspdf";
 import JSZip from "jszip";
 import QRCode from "qrcode";
-
 import {
   Download,
   FileArchive,
@@ -34,11 +33,64 @@ export default function DownloadBadges({
   badgeFile,
   configuration,
 }: DownloadBadgesProps) {
-  const [downloading, setDownloading] =
-    useState(false);
-
+  const [downloading, setDownloading] = useState(false);
   const [downloadingIndex, setDownloadingIndex] =
     useState<number | null>(null);
+
+  /*
+   * ============================================================
+   * NORMALIZE FIELD NAME
+   * ============================================================
+   */
+
+  const normalizeFieldName = (value: string) => {
+    return value
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .replace(/[._-]+/g, " ")
+      .trim();
+  };
+
+  /*
+   * ============================================================
+   * GET CUSTOM FIELD VALUE
+   * ============================================================
+   */
+
+  const getCustomFieldValue = (
+    attendee: Attendee,
+    fieldName?: string
+  ) => {
+    const requestedField = fieldName?.trim();
+
+    if (!requestedField) {
+      return "";
+    }
+
+    // Exact field match first
+    const exactValue = attendee[requestedField];
+
+    if (exactValue?.trim()) {
+      return exactValue.trim();
+    }
+
+    // Normalized field match
+    const normalizedRequestedField =
+      normalizeFieldName(requestedField);
+
+    const matchedKey = Object.keys(attendee).find(
+      (key) =>
+        normalizeFieldName(key) ===
+        normalizedRequestedField
+    );
+
+    if (matchedKey) {
+      return attendee[matchedKey]?.trim() || "";
+    }
+
+    return "";
+  };
 
   /*
    * ============================================================
@@ -46,45 +98,57 @@ export default function DownloadBadges({
    * ============================================================
    */
 
-  const getQRValue = (
-    attendee: Attendee
-  ) => {
-    if (
-      configuration.qrField ===
-      "registrationNumber"
-    ) {
-      return (
-        attendee.registrationNumber?.trim() ||
-        "PREVIEW-QR-001"
-      );
-    }
-
-    if (
-      configuration.qrField ===
-      "code"
-    ) {
-      return (
-        attendee.code?.trim() ||
-        "PREVIEW-QR-001"
-      );
-    }
-
-    if (
-      configuration.qrField ===
-      "custom"
-    ) {
-      const customField =
-        configuration.customQRField?.trim();
-
-      if (customField) {
+  const getQRValue = (attendee: Attendee) => {
+    switch (configuration.qrField) {
+      /*
+       * Registration Number
+       */
+      case "registrationNumber":
         return (
-          attendee[customField]?.trim() ||
+          attendee.registrationNumber?.trim() ||
+          "PREVIEW-QR-001"
+        );
+
+      /*
+       * Attendee Name
+       */
+      case "name":
+        return (
+          attendee.name?.trim() ||
+          "PREVIEW-QR-001"
+        );
+
+      /*
+       * Attendee Code
+       */
+      case "code":
+        return (
+          attendee.code?.trim() ||
+          "PREVIEW-QR-001"
+        );
+
+      /*
+       * Custom Excel Field
+       */
+      case "custom": {
+        const customValue =
+          getCustomFieldValue(
+            attendee,
+            configuration.customQRField
+          );
+
+        return (
+          customValue ||
           "PREVIEW-QR-001"
         );
       }
-    }
 
-    return "PREVIEW-QR-001";
+      /*
+       * Safety fallback
+       */
+      default:
+        return "PREVIEW-QR-001";
+    }
   };
 
   /*
@@ -93,18 +157,10 @@ export default function DownloadBadges({
    * ============================================================
    */
 
-  const safeFileName = (
-    value: string
-  ) => {
+  const safeFileName = (value: string) => {
     return value
-      .replace(
-        /[<>:"/\\|?*]/g,
-        ""
-      )
-      .replace(
-        /\s+/g,
-        "_"
-      )
+      .replace(/[<>:"/\\|?*]/g, "")
+      .replace(/\s+/g, "_")
       .trim()
       .slice(0, 80);
   };
@@ -120,8 +176,7 @@ export default function DownloadBadges({
   ): Promise<string> => {
     return new Promise(
       (resolve, reject) => {
-        const reader =
-          new FileReader();
+        const reader = new FileReader();
 
         reader.onload = () => {
           resolve(
@@ -137,9 +192,7 @@ export default function DownloadBadges({
           );
         };
 
-        reader.readAsDataURL(
-          file
-        );
+        reader.readAsDataURL(file);
       }
     );
   };
@@ -155,8 +208,7 @@ export default function DownloadBadges({
   ): Promise<HTMLImageElement> => {
     return new Promise(
       (resolve, reject) => {
-        const image =
-          new Image();
+        const image = new Image();
 
         image.onload = () =>
           resolve(image);
@@ -191,7 +243,9 @@ export default function DownloadBadges({
         badgeFile.type.toLowerCase();
 
       /*
-       * IMAGE
+       * ========================================================
+       * IMAGE TEMPLATE
+       * ========================================================
        */
 
       if (
@@ -212,20 +266,19 @@ export default function DownloadBadges({
 
         return {
           dataUrl,
-          width:
-            image.naturalWidth,
-          height:
-            image.naturalHeight,
+          width: image.naturalWidth,
+          height: image.naturalHeight,
         };
       }
 
       /*
-       * PDF
+       * ========================================================
+       * PDF TEMPLATE
+       * ========================================================
        */
 
       if (
-        type ===
-          "application/pdf" ||
+        type === "application/pdf" ||
         badgeFile.name
           .toLowerCase()
           .endsWith(".pdf")
@@ -273,31 +326,27 @@ export default function DownloadBadges({
           );
         }
 
-        canvas.width =
-          Math.ceil(
-            viewport.width
-          );
+        canvas.width = Math.ceil(
+          viewport.width
+        );
 
-        canvas.height =
-          Math.ceil(
-            viewport.height
-          );
+        canvas.height = Math.ceil(
+          viewport.height
+        );
 
         await page.render({
-  canvasContext: context,
-  canvas,
-  viewport,
-}).promise;
+          canvasContext: context,
+          canvas,
+          viewport,
+        }).promise;
 
         return {
           dataUrl:
             canvas.toDataURL(
               "image/png"
             ),
-          width:
-            canvas.width,
-          height:
-            canvas.height,
+          width: canvas.width,
+          height: canvas.height,
         };
       }
 
@@ -384,13 +433,9 @@ export default function DownloadBadges({
 
       if (name.length > 32) {
         fontSize = 9;
-      } else if (
-        name.length > 27
-      ) {
+      } else if (name.length > 27) {
         fontSize = 10;
-      } else if (
-        name.length > 20
-      ) {
+      } else if (name.length > 20) {
         fontSize = 12;
       }
 
@@ -399,9 +444,7 @@ export default function DownloadBadges({
         "bold"
       );
 
-      pdf.setFontSize(
-        fontSize
-      );
+      pdf.setFontSize(fontSize);
 
       pdf.setTextColor(
         0,
@@ -410,7 +453,7 @@ export default function DownloadBadges({
       );
 
       /*
-       * Split name based on the
+       * Split name based on
        * actual PDF width.
        */
 
@@ -421,15 +464,12 @@ export default function DownloadBadges({
         );
 
       const lineCount =
-        Array.isArray(
-          nameLines
-        )
+        Array.isArray(nameLines)
           ? nameLines.length
           : 1;
 
       /*
-       * Name starts slightly higher
-       * to give 2-line names room.
+       * Name position
        */
 
       const nameY =
@@ -499,15 +539,18 @@ export default function DownloadBadges({
 
       /*
        * ========================================================
-       * QR
+       * QR CODE
        * ========================================================
        */
 
       if (configuration.qr) {
         const qrValue =
-          getQRValue(
-            attendee
-          );
+          getQRValue(attendee);
+
+        /*
+         * Generate a NEW QR based
+         * on the selected field.
+         */
 
         const qrDataUrl =
           await QRCode.toDataURL(
@@ -524,9 +567,7 @@ export default function DownloadBadges({
           width * 0.21;
 
         const qrX =
-          (width -
-            qrSize) /
-          2;
+          (width - qrSize) / 2;
 
         const qrY =
           height * 0.645 +
@@ -549,6 +590,10 @@ export default function DownloadBadges({
           qrSize,
           "F"
         );
+
+        /*
+         * Add QR
+         */
 
         pdf.addImage(
           qrDataUrl,
@@ -627,9 +672,7 @@ export default function DownloadBadges({
       }
 
       try {
-        setDownloadingIndex(
-          index
-        );
+        setDownloadingIndex(index);
 
         /*
          * Load template
@@ -762,8 +805,7 @@ export default function DownloadBadges({
 
         for (
           let index = 0;
-          index <
-          attendees.length;
+          index < attendees.length;
           index++
         ) {
           const attendee =
@@ -807,10 +849,9 @@ export default function DownloadBadges({
               type: "blob",
               compression:
                 "DEFLATE",
-              compressionOptions:
-                {
-                  level: 6,
-                },
+              compressionOptions: {
+                level: 6,
+              },
             }
           );
 
@@ -904,8 +945,7 @@ export default function DownloadBadges({
 
             <p className="text-xs text-zinc-500">
               {attendees.length} personalized{" "}
-              {attendees.length ===
-              1
+              {attendees.length === 1
                 ? "badge"
                 : "badges"}{" "}
               ready
@@ -919,12 +959,8 @@ export default function DownloadBadges({
 
         <button
           type="button"
-          onClick={
-            handleDownloadAll
-          }
-          disabled={
-            downloading
-          }
+          onClick={handleDownloadAll}
+          disabled={downloading}
           className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-black px-5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
         >
 
@@ -970,9 +1006,7 @@ export default function DownloadBadges({
             index
           ) => (
             <div
-              key={
-                attendee.id
-              }
+              key={attendee.id}
               className="flex items-center justify-between gap-4 p-4"
             >
 
