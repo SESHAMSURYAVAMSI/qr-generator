@@ -12,7 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import LogoutButton from "@/components/LogoutButton";
 
 type EventItem = {
@@ -26,51 +26,101 @@ type EventItem = {
   status: "Active" | "Draft";
 };
 
-const INITIAL_EVENTS: EventItem[] = [
-  {
-    id: "rsacpcon-2026",
-    name: "RSACPCON 2026",
-    code: "RSACPCON26",
-    date: "24 July 2026",
-    location: "Hyderabad",
-    description:
-      "RSACPCON 2026 conference badge management workspace.",
-    attendees: 0,
-    status: "Active",
-  },
-  {
-    id: "acvs-india-2026",
-    name: "ACVS INDIA 2026",
-    code: "ACVS26",
-    date: "2026",
-    location: "India",
-    description:
-      "ACVS INDIA 2026 event badge management workspace.",
-    attendees: 0,
-    status: "Active",
-  },
-];
+type ApiEvent = {
+  _id: string;
+  name: string;
+  slug: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  location: string;
+  status: "draft" | "active" | "completed";
+  createdAt: string;
+  updatedAt: string;
+};
 
 export default function EventsPage() {
-  const [events, setEvents] =
-    useState<EventItem[]>(INITIAL_EVENTS);
+  const [events, setEvents] = useState<EventItem[]>([]);
 
   const [search, setSearch] = useState("");
 
-  const [showCreateForm, setShowCreateForm] =
-    useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   const [eventName, setEventName] = useState("");
   const [eventCode, setEventCode] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [location, setLocation] = useState("");
-  const [description, setDescription] =
-    useState("");
+  const [description, setDescription] = useState("");
+
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  // ============================================================
+  // LOAD EVENTS FROM MONGODB
+  // ============================================================
+
+  const loadEvents = async () => {
+    try {
+      setLoading(true);
+      setErrorMessage("");
+
+      const response = await fetch("/api/events", {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.message || "Failed to load events."
+        );
+      }
+
+      const mappedEvents: EventItem[] = (
+        data.events as ApiEvent[]
+      ).map((event) => ({
+        id: event.slug,
+        name: event.name,
+        code: createEventCode(event.name),
+        date: formatEventDate(event.startDate),
+        location: event.location || "Location not set",
+        description:
+          event.description ||
+          "Event badge management workspace.",
+        attendees: 0,
+        status:
+          event.status === "active"
+            ? "Active"
+            : "Draft",
+      }));
+
+      setEvents(mappedEvents);
+    } catch (error) {
+      console.error("Load events error:", error);
+
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Failed to load events."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadEvents();
+  }, []);
+
+  // ============================================================
+  // SEARCH
+  // ============================================================
 
   const filteredEvents = useMemo(() => {
-    const query = search
-      .trim()
-      .toLowerCase();
+    const query = search.trim().toLowerCase();
 
     if (!query) {
       return events;
@@ -78,18 +128,16 @@ export default function EventsPage() {
 
     return events.filter((event) => {
       return (
-        event.name
-          .toLowerCase()
-          .includes(query) ||
-        event.code
-          .toLowerCase()
-          .includes(query) ||
-        event.location
-          .toLowerCase()
-          .includes(query)
+        event.name.toLowerCase().includes(query) ||
+        event.code.toLowerCase().includes(query) ||
+        event.location.toLowerCase().includes(query)
       );
     });
   }, [events, search]);
+
+  // ============================================================
+  // RESET FORM
+  // ============================================================
 
   const resetForm = () => {
     setEventName("");
@@ -97,61 +145,104 @@ export default function EventsPage() {
     setEventDate("");
     setLocation("");
     setDescription("");
+    setErrorMessage("");
   };
 
-  const handleCreateEvent = (
+  // ============================================================
+  // CREATE EVENT → MONGODB
+  // ============================================================
+
+  const handleCreateEvent = async (
     event: React.FormEvent<HTMLFormElement>
   ) => {
     event.preventDefault();
 
     if (!eventName.trim()) {
+      setErrorMessage("Event name is required.");
       return;
     }
 
-    const newEvent: EventItem = {
-      id: `${eventName
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`,
+    if (!eventDate) {
+      setErrorMessage("Please select an event date.");
+      return;
+    }
 
-      name: eventName.trim(),
+    try {
+      setCreating(true);
+      setErrorMessage("");
 
-      code:
+      const generatedSlug =
+        createSlug(eventName);
+
+      const generatedCode =
         eventCode.trim() ||
-        eventName
-          .trim()
-          .toUpperCase()
-          .replace(/[^A-Z0-9]+/g, "-"),
+        createEventCode(eventName);
 
-      date: eventDate
-        ? new Date(
+      const response = await fetch("/api/events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: eventName.trim(),
+
+          slug: generatedSlug,
+
+          description:
+            description.trim() ||
+            "Event badge management workspace.",
+
+          startDate: new Date(
             `${eventDate}T00:00:00`
-          ).toLocaleDateString("en-IN", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-          })
-        : "Date not set",
+          ).toISOString(),
 
-      location:
-        location.trim() || "Location not set",
+          // For now the form has only one date field,
+          // so startDate and endDate use the same date.
+          endDate: new Date(
+            `${eventDate}T00:00:00`
+          ).toISOString(),
 
-      description:
-        description.trim() ||
-        "Event badge management workspace.",
+          location:
+            location.trim() ||
+            "Location not set",
 
-      attendees: 0,
-      status: "Draft",
-    };
+          status: "draft",
 
-    setEvents((previous) => [
-      newEvent,
-      ...previous,
-    ]);
+          code: generatedCode,
+        }),
+      });
 
-    resetForm();
-    setShowCreateForm(false);
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.message ||
+            "Failed to create event."
+        );
+      }
+
+      // Reload from MongoDB so the UI reflects
+      // the actual database record.
+      await loadEvents();
+
+      resetForm();
+      setShowCreateForm(false);
+    } catch (error) {
+      console.error("Create event error:", error);
+
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Failed to create event."
+      );
+    } finally {
+      setCreating(false);
+    }
   };
+
+  // ============================================================
+  // UI
+  // ============================================================
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#f6f8fb] text-zinc-950 dark:bg-[#09090b] dark:text-white">
@@ -161,7 +252,7 @@ export default function EventsPage() {
 
         <div className="absolute right-0 top-20 h-96 w-96 rounded-full bg-cyan-300/20 blur-3xl dark:bg-cyan-500/10" />
 
-        <div className="absolute bottom-0 left-1/3 h-80 w-80 rounded-full bg-violet-300/10 blur-3xl dark:bg-violet-500/10" />
+        <div className="absolute bottom-0 left-1/3 h-80 w-80 rounded-full bg-violet-300/10 blur-3xl" />
       </div>
 
       {/* Header */}
@@ -227,9 +318,10 @@ export default function EventsPage() {
 
             <button
               type="button"
-              onClick={() =>
-                setShowCreateForm(true)
-              }
+              onClick={() => {
+                setErrorMessage("");
+                setShowCreateForm(true);
+              }}
               className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-zinc-950 px-5 text-sm font-bold text-white shadow-xl transition hover:-translate-y-0.5 hover:bg-emerald-600 dark:bg-white dark:text-black dark:hover:bg-emerald-400"
             >
               <Plus className="h-4 w-4" />
@@ -237,6 +329,13 @@ export default function EventsPage() {
             </button>
           </div>
         </section>
+
+        {/* Error */}
+        {errorMessage && !showCreateForm && (
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400">
+            {errorMessage}
+          </div>
+        )}
 
         {/* Stats */}
         <section className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -291,8 +390,21 @@ export default function EventsPage() {
           </div>
         </section>
 
-        {/* Event List */}
-        {filteredEvents.length > 0 ? (
+        {/* Loading */}
+        {loading ? (
+          <section className="rounded-3xl border border-zinc-200 bg-white px-6 py-20 text-center dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-zinc-200 border-t-emerald-500 dark:border-zinc-700 dark:border-t-emerald-400" />
+
+            <h3 className="mt-5 text-lg font-bold">
+              Loading events...
+            </h3>
+
+            <p className="mt-2 text-sm text-zinc-500">
+              Fetching your events from MongoDB.
+            </p>
+          </section>
+        ) : filteredEvents.length > 0 ? (
+          /* Event List */
           <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {filteredEvents.map((event) => (
               <EventCard
@@ -357,6 +469,13 @@ export default function EventsPage() {
                 Close
               </button>
             </div>
+
+            {/* Modal error */}
+            {errorMessage && (
+              <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400">
+                {errorMessage}
+              </div>
+            )}
 
             <form
               onSubmit={handleCreateEvent}
@@ -428,17 +547,28 @@ export default function EventsPage() {
                     resetForm();
                     setShowCreateForm(false);
                   }}
-                  className="h-11 rounded-xl border border-zinc-200 px-5 text-sm font-semibold text-zinc-600 transition hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-900"
+                  disabled={creating}
+                  className="h-11 rounded-xl border border-zinc-200 px-5 text-sm font-semibold text-zinc-600 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-900"
                 >
                   Cancel
                 </button>
 
                 <button
                   type="submit"
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-5 text-sm font-bold text-white transition hover:bg-emerald-600 dark:bg-white dark:text-black dark:hover:bg-emerald-400"
+                  disabled={creating}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-5 text-sm font-bold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-emerald-400"
                 >
-                  <Plus className="h-4 w-4" />
-                  Create Event
+                  {creating ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white dark:border-black/30 dark:border-t-black" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4" />
+                      Create Event
+                    </>
+                  )}
                 </button>
               </div>
             </form>
@@ -447,6 +577,43 @@ export default function EventsPage() {
       )}
     </main>
   );
+}
+
+/* ============================================================
+   HELPERS
+============================================================ */
+
+function createSlug(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function createEventCode(value: string) {
+  return value
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-");
+}
+
+function formatEventDate(value: string) {
+  if (!value) {
+    return "Date not set";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Date not set";
+  }
+
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 /* ============================================================

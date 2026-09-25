@@ -1078,7 +1078,6 @@
 //   );
 // }
 
-
 "use client";
 
 import { useState } from "react";
@@ -1086,17 +1085,9 @@ import jsPDF from "jspdf";
 import JSZip from "jszip";
 import QRCode from "qrcode";
 
-import {
-  Download,
-  FileArchive,
-  Loader2,
-  CheckCircle2,
-} from "lucide-react";
+import { Download, FileArchive, Loader2, CheckCircle2 } from "lucide-react";
 
-import type {
-  Attendee,
-  BadgeConfiguration,
-} from "@/types/badge";
+import type { Attendee, BadgeConfiguration } from "@/types/badge";
 
 interface DownloadBadgesProps {
   attendees: Attendee[];
@@ -1115,11 +1106,9 @@ export default function DownloadBadges({
   badgeFile,
   configuration,
 }: DownloadBadgesProps) {
-  const [downloading, setDownloading] =
-    useState(false);
+  const [downloading, setDownloading] = useState(false);
 
-  const [downloadingIndex, setDownloadingIndex] =
-    useState<number | null>(null);
+  const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null);
 
   /*
    * ============================================================
@@ -1127,49 +1116,24 @@ export default function DownloadBadges({
    * ============================================================
    */
 
-  const getQRValue = (
-    attendee: Attendee
-  ) => {
-    if (
-      configuration.qrField ===
-      "registrationNumber"
-    ) {
-      return (
-        attendee.registrationNumber?.trim() ||
-        "PREVIEW-QR-001"
-      );
+  const getQRValue = (attendee: Attendee) => {
+    if (configuration.qrField === "registrationNumber") {
+      return attendee.registrationNumber?.trim() || "PREVIEW-QR-001";
     }
 
-    if (
-      configuration.qrField ===
-      "name"
-    ) {
-      return (
-        attendee.name?.trim() ||
-        "NO-NAME"
-      );
+    if (configuration.qrField === "name") {
+      return attendee.name?.trim() || "NO-NAME";
     }
 
-    if (
-      configuration.qrField ===
-      "code"
-    ) {
-      return (
-        attendee.code?.trim() ||
-        "NO-CODE"
-      );
+    if (configuration.qrField === "code") {
+      return attendee.code?.trim() || "NO-CODE";
     }
 
-    if (
-      configuration.qrField ===
-      "custom"
-    ) {
-      const customField =
-        configuration.customQRField?.trim();
+    if (configuration.qrField === "custom") {
+      const customField = configuration.customQRField?.trim();
 
       if (customField) {
-        const exactValue =
-          attendee[customField];
+        const exactValue = attendee[customField];
 
         if (exactValue?.trim()) {
           return exactValue.trim();
@@ -1186,14 +1150,11 @@ export default function DownloadBadges({
         const target = normalize(customField);
 
         const matchingKey = Object.keys(attendee).find(
-          (key) => normalize(key) === target
+          (key) => normalize(key) === target,
         );
 
         if (matchingKey) {
-          return (
-            attendee[matchingKey]?.trim() ||
-            "NO-CUSTOM-VALUE"
-          );
+          return attendee[matchingKey]?.trim() || "NO-CUSTOM-VALUE";
         }
       }
 
@@ -1209,18 +1170,10 @@ export default function DownloadBadges({
    * ============================================================
    */
 
-  const safeFileName = (
-    value: string
-  ) => {
+  const safeFileName = (value: string) => {
     return value
-      .replace(
-        /[<>:"/\\|?*]/g,
-        ""
-      )
-      .replace(
-        /\s+/g,
-        "_"
-      )
+      .replace(/[<>:"/\\|?*]/g, "")
+      .replace(/\s+/g, "_")
       .trim()
       .slice(0, 80);
   };
@@ -1231,33 +1184,20 @@ export default function DownloadBadges({
    * ============================================================
    */
 
-  const fileToDataURL = (
-    file: File
-  ): Promise<string> => {
-    return new Promise(
-      (resolve, reject) => {
-        const reader =
-          new FileReader();
+  const fileToDataURL = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
 
-        reader.onload = () => {
-          resolve(
-            reader.result as string
-          );
-        };
+      reader.onload = () => {
+        resolve(reader.result as string);
+      };
 
-        reader.onerror = () => {
-          reject(
-            new Error(
-              "Unable to read badge file."
-            )
-          );
-        };
+      reader.onerror = () => {
+        reject(new Error("Unable to read badge file."));
+      };
 
-        reader.readAsDataURL(
-          file
-        );
-      }
-    );
+      reader.readAsDataURL(file);
+    });
   };
 
   /*
@@ -1266,27 +1206,16 @@ export default function DownloadBadges({
    * ============================================================
    */
 
-  const loadImage = (
-    src: string
-  ): Promise<HTMLImageElement> => {
-    return new Promise(
-      (resolve, reject) => {
-        const image =
-          new Image();
+  const loadImage = (src: string): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
 
-        image.onload = () =>
-          resolve(image);
+      image.onload = () => resolve(image);
 
-        image.onerror = () =>
-          reject(
-            new Error(
-              "Unable to load badge image."
-            )
-          );
+      image.onerror = () => reject(new Error("Unable to load badge image."));
 
-        image.src = src;
-      }
-    );
+      image.src = src;
+    });
   };
 
   /*
@@ -1295,132 +1224,87 @@ export default function DownloadBadges({
    * ============================================================
    */
 
-  const loadBadgeTemplate =
-    async (): Promise<BadgeImage> => {
-      if (!badgeFile) {
-        throw new Error(
-          "Badge template is missing."
-        );
+  const loadBadgeTemplate = async (): Promise<BadgeImage> => {
+    if (!badgeFile) {
+      throw new Error("Badge template is missing.");
+    }
+
+    const type = badgeFile.type.toLowerCase();
+
+    /*
+     * IMAGE
+     */
+
+    if (
+      type === "image/png" ||
+      type === "image/jpeg" ||
+      type === "image/jpg" ||
+      type === "image/webp"
+    ) {
+      const dataUrl = await fileToDataURL(badgeFile);
+
+      const image = await loadImage(dataUrl);
+
+      return {
+        dataUrl,
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+      };
+    }
+
+    /*
+     * PDF
+     */
+
+    if (
+      type === "application/pdf" ||
+      badgeFile.name.toLowerCase().endsWith(".pdf")
+    ) {
+      const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+
+      pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+
+      const buffer = await badgeFile.arrayBuffer();
+
+      const loadingTask = pdfjs.getDocument({
+        data: new Uint8Array(buffer),
+      });
+
+      const pdf = await loadingTask.promise;
+
+      const page = await pdf.getPage(1);
+
+      const viewport = page.getViewport({
+        scale: 3,
+      });
+
+      const canvas = document.createElement("canvas");
+
+      const context = canvas.getContext("2d");
+
+      if (!context) {
+        throw new Error("Unable to create PDF canvas.");
       }
 
-      const type =
-        badgeFile.type.toLowerCase();
+      canvas.width = Math.ceil(viewport.width);
 
-      /*
-       * IMAGE
-       */
+      canvas.height = Math.ceil(viewport.height);
 
-      if (
-        type === "image/png" ||
-        type === "image/jpeg" ||
-        type === "image/jpg" ||
-        type === "image/webp"
-      ) {
-        const dataUrl =
-          await fileToDataURL(
-            badgeFile
-          );
+      await page.render({
+        canvasContext: context,
+        canvas,
+        viewport,
+      }).promise;
 
-        const image =
-          await loadImage(
-            dataUrl
-          );
+      return {
+        dataUrl: canvas.toDataURL("image/png"),
+        width: canvas.width,
+        height: canvas.height,
+      };
+    }
 
-        return {
-          dataUrl,
-          width:
-            image.naturalWidth,
-          height:
-            image.naturalHeight,
-        };
-      }
-
-      /*
-       * PDF
-       */
-
-      if (
-        type ===
-          "application/pdf" ||
-        badgeFile.name
-          .toLowerCase()
-          .endsWith(".pdf")
-      ) {
-        const pdfjs =
-          await import(
-            "pdfjs-dist/legacy/build/pdf.mjs"
-          );
-
-        pdfjs.GlobalWorkerOptions.workerSrc =
-          "/pdf.worker.min.mjs";
-
-        const buffer =
-          await badgeFile.arrayBuffer();
-
-        const loadingTask =
-          pdfjs.getDocument({
-            data: new Uint8Array(
-              buffer
-            ),
-          });
-
-        const pdf =
-          await loadingTask.promise;
-
-        const page =
-          await pdf.getPage(1);
-
-        const viewport =
-          page.getViewport({
-            scale: 3,
-          });
-
-        const canvas =
-          document.createElement(
-            "canvas"
-          );
-
-        const context =
-          canvas.getContext("2d");
-
-        if (!context) {
-          throw new Error(
-            "Unable to create PDF canvas."
-          );
-        }
-
-        canvas.width =
-          Math.ceil(
-            viewport.width
-          );
-
-        canvas.height =
-          Math.ceil(
-            viewport.height
-          );
-
-        await page.render({
-  canvasContext: context,
-  canvas,
-  viewport,
-}).promise;
-
-        return {
-          dataUrl:
-            canvas.toDataURL(
-              "image/png"
-            ),
-          width:
-            canvas.width,
-          height:
-            canvas.height,
-        };
-      }
-
-      throw new Error(
-        "Unsupported badge template."
-      );
-    };
+    throw new Error("Unsupported badge template.");
+  };
 
   /*
    * ============================================================
@@ -1428,301 +1312,190 @@ export default function DownloadBadges({
    * ============================================================
    */
 
-  const generateBadgePDF =
-    async (
-      attendee: Attendee,
-      badge: BadgeImage
-    ): Promise<Blob> => {
-      const image =
-        await loadImage(
-          badge.dataUrl
-        );
+  const generateBadgePDF = async (
+    attendee: Attendee,
+    badge: BadgeImage,
+  ): Promise<Blob> => {
+    const image = await loadImage(badge.dataUrl);
 
-      /*
-       * Badge dimensions
-       */
+    /*
+     * Badge dimensions
+     */
 
-      const width = 255;
+    const width = 255;
 
-      const height =
-        (badge.height /
-          badge.width) *
-        width;
+    const height = (badge.height / badge.width) * width;
 
-      const pdf =
-        new jsPDF({
-          orientation:
-            width > height
-              ? "landscape"
-              : "portrait",
+    const pdf = new jsPDF({
+      orientation: width > height ? "landscape" : "portrait",
 
-          unit: "pt",
+      unit: "pt",
 
-          format: [
-            width,
-            height,
-          ],
+      format: [width, height],
 
-          compress: true,
-        });
+      compress: true,
+    });
 
-      /*
-       * ========================================================
-       * ORIGINAL BADGE
-       * ========================================================
-       */
+    /*
+     * ========================================================
+     * ORIGINAL BADGE
+     * ========================================================
+     */
 
-      pdf.addImage(
-        image,
-        "PNG",
-        0,
-        0,
-        width,
-        height,
-        undefined,
-        "FAST"
-      );
+    pdf.addImage(image, "PNG", 0, 0, width, height, undefined, "FAST");
 
-      /*
-       * ========================================================
-       * NAME
-       * ========================================================
-       */
+    /*
+     * ========================================================
+     * NAME
+     * ========================================================
+     */
 
-      const name =
-        attendee.name?.trim() ||
-        "Attendee Name";
+    const name = attendee.name?.trim() || "Attendee Name";
 
-      const maxNameWidth =
-        width * 0.78;
+    const maxNameWidth = width * 0.78;
 
-      let fontSize = 14;
+    let fontSize = 14;
 
-      if (name.length > 32) {
-        fontSize = 9;
-      } else if (
-        name.length > 27
-      ) {
-        fontSize = 10;
-      } else if (
-        name.length > 20
-      ) {
-        fontSize = 12;
-      }
+    if (name.length > 32) {
+      fontSize = 9;
+    } else if (name.length > 27) {
+      fontSize = 10;
+    } else if (name.length > 20) {
+      fontSize = 12;
+    }
 
-      pdf.setFont(
-        "helvetica",
-        "bold"
-      );
+    pdf.setFont("helvetica", "bold");
 
-      pdf.setFontSize(
-        fontSize
-      );
+    pdf.setFontSize(fontSize);
 
-      pdf.setTextColor(
-        0,
-        0,
-        0
-      );
+    pdf.setTextColor(0, 0, 0);
 
-      /*
-       * Split name based on the
-       * actual PDF width.
-       */
+    /*
+     * Split name based on the
+     * actual PDF width.
+     */
 
-      const nameLines =
-        pdf.splitTextToSize(
-          name,
-          maxNameWidth
-        );
+    const nameLines = pdf.splitTextToSize(name, maxNameWidth);
 
-      const lineCount =
-        Array.isArray(
-          nameLines
-        )
-          ? nameLines.length
-          : 1;
+    const lineCount = Array.isArray(nameLines) ? nameLines.length : 1;
 
-      /*
-       * Name starts slightly higher
-       * to give 2-line names room.
-       */
+    /*
+     * Name starts slightly higher
+     * to give 2-line names room.
+     */
 
-      const nameY =
-        height * 0.545;
+    const nameY = height * 0.545;
+
+    pdf.text(nameLines, width / 2, nameY, {
+      align: "center",
+      lineHeightFactor: 1.12,
+    });
+
+    /*
+     * ========================================================
+     * DYNAMIC SPACING
+     * ========================================================
+     */
+
+    const extraSpacing = Math.min(Math.max(lineCount - 1, 0) * 12, 24);
+
+    /*
+     * ========================================================
+     * REGISTRATION NUMBER
+     * ========================================================
+     */
+
+    if (configuration.registrationNumber) {
+      pdf.setFont("helvetica", "normal");
+
+      pdf.setFontSize(9);
+
+      pdf.setTextColor(65, 65, 65);
+
+      const registrationY = height * 0.615 + extraSpacing;
 
       pdf.text(
-        nameLines,
+        attendee.registrationNumber || "Registration No.",
         width / 2,
-        nameY,
+        registrationY,
         {
           align: "center",
-          lineHeightFactor: 1.12,
-        }
+        },
       );
+    }
+
+    /*
+     * ========================================================
+     * QR
+     * ========================================================
+     */
+
+    if (configuration.qr) {
+      const qrValue = getQRValue(attendee);
+
+      const qrDataUrl = await QRCode.toDataURL(qrValue, {
+        width: 600,
+        margin: 2,
+        errorCorrectionLevel: "H",
+      });
+
+      const qrSize = width * 0.21;
+
+      const qrX = (width - qrSize) / 2;
+
+      const qrY = height * 0.645 + extraSpacing;
 
       /*
-       * ========================================================
-       * DYNAMIC SPACING
-       * ========================================================
+       * White QR background
        */
 
-      const extraSpacing =
-        Math.min(
-          Math.max(
-            lineCount - 1,
-            0
-          ) * 12,
-          24
-        );
+      pdf.setFillColor(255, 255, 255);
 
-      /*
-       * ========================================================
-       * REGISTRATION NUMBER
-       * ========================================================
-       */
+      pdf.rect(qrX, qrY, qrSize, qrSize, "F");
 
-      if (
-        configuration.registrationNumber
-      ) {
-        pdf.setFont(
-          "helvetica",
-          "normal"
-        );
-
-        pdf.setFontSize(9);
-
-        pdf.setTextColor(
-          65,
-          65,
-          65
-        );
-
-        const registrationY =
-          height * 0.615 +
-          extraSpacing;
-
-        pdf.text(
-          attendee.registrationNumber ||
-            "Registration No.",
-          width / 2,
-          registrationY,
-          {
-            align: "center",
-          }
-        );
-      }
-
-      /*
-       * ========================================================
-       * QR
-       * ========================================================
-       */
-
-      if (configuration.qr) {
-        const qrValue =
-          getQRValue(
-            attendee
-          );
-
-        const qrDataUrl =
-          await QRCode.toDataURL(
-            qrValue,
-            {
-              width: 600,
-              margin: 2,
-              errorCorrectionLevel:
-                "H",
-            }
-          );
-
-        const qrSize =
-          width * 0.21;
-
-        const qrX =
-          (width -
-            qrSize) /
-          2;
-
-        const qrY =
-          height * 0.645 +
-          extraSpacing;
-
-        /*
-         * White QR background
-         */
-
-        pdf.setFillColor(
-          255,
-          255,
-          255
-        );
-
-        pdf.rect(
-          qrX,
-          qrY,
-          qrSize,
-          qrSize,
-          "F"
-        );
-
-        pdf.addImage(
-          qrDataUrl,
-          "PNG",
-          qrX,
-          qrY,
-          qrSize,
-          qrSize,
-          undefined,
-          "FAST"
-        );
-      }
-
-      /*
-       * ========================================================
-       * CATEGORY
-       * ========================================================
-       */
-
-      if (
-        configuration.category &&
-        attendee.category?.trim()
-      ) {
-        pdf.setFont(
-          "helvetica",
-          "bold"
-        );
-
-        pdf.setFontSize(8);
-
-        pdf.setTextColor(
-          70,
-          70,
-          70
-        );
-
-        pdf.text(
-          attendee.category
-            .trim()
-            .toUpperCase(),
-          width / 2,
-          height * 0.875,
-          {
-            align: "center",
-          }
-        );
-      }
-
-      /*
-       * ========================================================
-       * PDF BLOB
-       * ========================================================
-       */
-
-      return pdf.output(
-        "blob"
+      pdf.addImage(
+        qrDataUrl,
+        "PNG",
+        qrX,
+        qrY,
+        qrSize,
+        qrSize,
+        undefined,
+        "FAST",
       );
-    };
+    }
+
+    /*
+     * ========================================================
+     * CATEGORY
+     * ========================================================
+     */
+
+    if (configuration.category && attendee.category?.trim()) {
+      pdf.setFont("helvetica", "bold");
+
+      pdf.setFontSize(8);
+
+      pdf.setTextColor(70, 70, 70);
+
+      pdf.text(
+        attendee.category.trim().toUpperCase(),
+        width / 2,
+        height * 0.875,
+        {
+          align: "center",
+        },
+      );
+    }
+
+    /*
+     * ========================================================
+     * PDF BLOB
+     * ========================================================
+     */
+
+    return pdf.output("blob");
+  };
 
   /*
    * ============================================================
@@ -1730,112 +1503,75 @@ export default function DownloadBadges({
    * ============================================================
    */
 
-  const handleIndividualDownload =
-    async (
-      attendee: Attendee,
-      index: number
-    ) => {
-      if (!badgeFile) {
-        alert(
-          "Please upload a badge template first."
-        );
-        return;
-      }
+  const handleIndividualDownload = async (
+    attendee: Attendee,
+    index: number,
+  ) => {
+    if (!badgeFile) {
+      alert("Please upload a badge template first.");
+      return;
+    }
 
-      try {
-        setDownloadingIndex(
-          index
-        );
+    try {
+      setDownloadingIndex(index);
 
-        /*
-         * Load template
-         */
+      /*
+       * Load template
+       */
 
-        const badge =
-          await loadBadgeTemplate();
+      const badge = await loadBadgeTemplate();
 
-        /*
-         * Generate PDF
-         */
+      /*
+       * Generate PDF
+       */
 
-        const blob =
-          await generateBadgePDF(
-            attendee,
-            badge
-          );
+      const blob = await generateBadgePDF(attendee, badge);
 
-        /*
-         * Create download
-         */
+      /*
+       * Create download
+       */
 
-        const url =
-          URL.createObjectURL(
-            blob
-          );
+      const url = URL.createObjectURL(blob);
 
-        const anchor =
-          document.createElement(
-            "a"
-          );
+      const anchor = document.createElement("a");
 
-        const registration =
-          attendee.registrationNumber ||
-          attendee.code ||
-          `badge-${index + 1}`;
+      const registration =
+        attendee.registrationNumber || attendee.code || `badge-${index + 1}`;
 
-        const name =
-          attendee.name ||
-          "attendee";
+      const name = attendee.name || "attendee";
 
-        anchor.href = url;
+      anchor.href = url;
 
-        anchor.download =
-          `${safeFileName(
-            registration
-          )}_${safeFileName(
-            name
-          )}.pdf`;
+      anchor.download = `${safeFileName(registration)}_${safeFileName(
+        name,
+      )}.pdf`;
 
-        anchor.style.display =
-          "none";
+      anchor.style.display = "none";
 
-        document.body.appendChild(
-          anchor
-        );
+      document.body.appendChild(anchor);
 
-        anchor.click();
+      anchor.click();
 
-        document.body.removeChild(
-          anchor
-        );
+      document.body.removeChild(anchor);
 
-        /*
-         * Give browser time to
-         * start the download.
-         */
+      /*
+       * Give browser time to
+       * start the download.
+       */
 
-        setTimeout(() => {
-          URL.revokeObjectURL(
-            url
-          );
-        }, 1000);
-      } catch (error) {
-        console.error(
-          "Individual download error:",
-          error
-        );
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 1000);
+    } catch (error) {
+      console.error("Individual download error:", error);
 
-        alert(
-          error instanceof Error
-            ? error.message
-            : "Unable to download badge."
-        );
-      } finally {
-        setDownloadingIndex(
-          null
-        );
-      }
-    };
+      alert(
+        error instanceof Error ? error.message : "Unable to download badge.",
+      );
+    } finally {
+      setDownloadingIndex(null);
+    }
+  };
 
   /*
    * ============================================================
@@ -1843,145 +1579,94 @@ export default function DownloadBadges({
    * ============================================================
    */
 
-  const handleDownloadAll =
-    async () => {
-      if (!badgeFile) {
-        alert(
-          "Please upload a badge template first."
-        );
-        return;
+  const handleDownloadAll = async () => {
+    if (!badgeFile) {
+      alert("Please upload a badge template first.");
+      return;
+    }
+
+    if (!attendees.length) {
+      alert("No attendees available.");
+      return;
+    }
+
+    try {
+      setDownloading(true);
+
+      /*
+       * Load badge template ONLY ONCE.
+       */
+
+      const badge = await loadBadgeTemplate();
+
+      const zip = new JSZip();
+
+      /*
+       * Generate every badge.
+       */
+
+      for (let index = 0; index < attendees.length; index++) {
+        const attendee = attendees[index];
+
+        const blob = await generateBadgePDF(attendee, badge);
+
+        const registration =
+          attendee.registrationNumber || attendee.code || `badge-${index + 1}`;
+
+        const name = attendee.name || "attendee";
+
+        const fileName = `${safeFileName(registration)}_${safeFileName(
+          name,
+        )}.pdf`;
+
+        zip.file(fileName, blob);
       }
 
-      if (!attendees.length) {
-        alert(
-          "No attendees available."
-        );
-        return;
-      }
+      /*
+       * Generate ZIP.
+       */
 
-      try {
-        setDownloading(true);
+      const zipBlob = await zip.generateAsync({
+        type: "blob",
+        compression: "DEFLATE",
+        compressionOptions: {
+          level: 6,
+        },
+      });
 
-        /*
-         * Load badge template ONLY ONCE.
-         */
+      /*
+       * Download ZIP.
+       */
 
-        const badge =
-          await loadBadgeTemplate();
+      const url = URL.createObjectURL(zipBlob);
 
-        const zip =
-          new JSZip();
+      const anchor = document.createElement("a");
 
-        /*
-         * Generate every badge.
-         */
+      anchor.href = url;
 
-        for (
-          let index = 0;
-          index <
-          attendees.length;
-          index++
-        ) {
-          const attendee =
-            attendees[index];
+      anchor.download = "generated-badges.zip";
 
-          const blob =
-            await generateBadgePDF(
-              attendee,
-              badge
-            );
+      anchor.style.display = "none";
 
-          const registration =
-            attendee.registrationNumber ||
-            attendee.code ||
-            `badge-${index + 1}`;
+      document.body.appendChild(anchor);
 
-          const name =
-            attendee.name ||
-            "attendee";
+      anchor.click();
 
-          const fileName =
-            `${safeFileName(
-              registration
-            )}_${safeFileName(
-              name
-            )}.pdf`;
+      document.body.removeChild(anchor);
 
-          zip.file(
-            fileName,
-            blob
-          );
-        }
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 1500);
+    } catch (error) {
+      console.error("Download all error:", error);
 
-        /*
-         * Generate ZIP.
-         */
-
-        const zipBlob =
-          await zip.generateAsync(
-            {
-              type: "blob",
-              compression:
-                "DEFLATE",
-              compressionOptions:
-                {
-                  level: 6,
-                },
-            }
-          );
-
-        /*
-         * Download ZIP.
-         */
-
-        const url =
-          URL.createObjectURL(
-            zipBlob
-          );
-
-        const anchor =
-          document.createElement(
-            "a"
-          );
-
-        anchor.href = url;
-
-        anchor.download =
-          "generated-badges.zip";
-
-        anchor.style.display =
-          "none";
-
-        document.body.appendChild(
-          anchor
-        );
-
-        anchor.click();
-
-        document.body.removeChild(
-          anchor
-        );
-
-        setTimeout(() => {
-          URL.revokeObjectURL(
-            url
-          );
-        }, 1500);
-      } catch (error) {
-        console.error(
-          "Download all error:",
-          error
-        );
-
-        alert(
-          error instanceof Error
-            ? error.message
-            : "Unable to generate badges."
-        );
-      } finally {
-        setDownloading(false);
-      }
-    };
+      alert(
+        error instanceof Error ? error.message : "Unable to generate badges.",
+      );
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   /*
    * ============================================================
@@ -2012,32 +1697,27 @@ export default function DownloadBadges({
     return Object.values(attendee).some((value) =>
       String(value ?? "")
         .toLowerCase()
-        .includes(query)
+        .includes(query),
     );
   });
 
   const pageSize = 10;
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredAttendees.length / pageSize)
+    Math.ceil(filteredAttendees.length / pageSize),
   );
 
   const safePage = Math.min(page, totalPages);
 
   const paginatedAttendees = filteredAttendees.slice(
     (safePage - 1) * pageSize,
-    safePage * pageSize
+    safePage * pageSize,
   );
 
   const rangeStart =
-    filteredAttendees.length === 0
-      ? 0
-      : (safePage - 1) * pageSize + 1;
+    filteredAttendees.length === 0 ? 0 : (safePage - 1) * pageSize + 1;
 
-  const rangeEnd = Math.min(
-    safePage * pageSize,
-    filteredAttendees.length
-  );
+  const rangeEnd = Math.min(safePage * pageSize, filteredAttendees.length);
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
@@ -2049,9 +1729,7 @@ export default function DownloadBadges({
   };
 
   const handleNext = () => {
-    setPage((current) =>
-      Math.min(totalPages, current + 1)
-    );
+    setPage((current) => Math.min(totalPages, current + 1));
   };
 
   if (!attendees.length) {
@@ -2068,9 +1746,7 @@ export default function DownloadBadges({
           </div>
 
           <div className="min-w-0">
-            <h2 className="font-semibold">
-              Generated Badges
-            </h2>
+            <h2 className="font-semibold">Generated Badges</h2>
 
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
               {attendees.length} personalized{" "}
@@ -2105,9 +1781,7 @@ export default function DownloadBadges({
           <input
             type="text"
             value={search}
-            onChange={(event) =>
-              handleSearchChange(event.target.value)
-            }
+            onChange={(event) => handleSearchChange(event.target.value)}
             placeholder="Search name, registration, email, category..."
             className="h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 text-sm outline-none transition placeholder:text-zinc-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
           />
@@ -2185,8 +1859,7 @@ export default function DownloadBadges({
       <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
         {paginatedAttendees.length > 0 ? (
           paginatedAttendees.map((attendee, pageIndex) => {
-            const globalIndex =
-              (safePage - 1) * pageSize + pageIndex;
+            const globalIndex = (safePage - 1) * pageSize + pageIndex;
 
             return (
               <div
@@ -2217,9 +1890,7 @@ export default function DownloadBadges({
 
                 <div className="hidden min-w-0 sm:block">
                   <p className="truncate text-sm text-zinc-600 dark:text-zinc-300">
-                    {attendee.registrationNumber ||
-                      attendee.code ||
-                      "—"}
+                    {attendee.registrationNumber || attendee.code || "—"}
                   </p>
                 </div>
 
@@ -2227,15 +1898,9 @@ export default function DownloadBadges({
                   <button
                     type="button"
                     onClick={() =>
-                      handleIndividualDownload(
-                        attendee,
-                        globalIndex
-                      )
+                      handleIndividualDownload(attendee, globalIndex)
                     }
-                    disabled={
-                      downloading ||
-                      downloadingIndex === globalIndex
-                    }
+                    disabled={downloading || downloadingIndex === globalIndex}
                     className="inline-flex h-9 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
                   >
                     {downloadingIndex === globalIndex ? (

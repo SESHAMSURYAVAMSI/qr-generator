@@ -52,9 +52,7 @@ export default function FileUpload({
             Click to upload
           </span>
 
-          <span className="mt-1 text-xs text-zinc-500">
-            {description}
-          </span>
+          <span className="mt-1 text-xs text-zinc-500">{description}</span>
         </button>
       ) : (
         <div className="flex items-center justify-between rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-900">

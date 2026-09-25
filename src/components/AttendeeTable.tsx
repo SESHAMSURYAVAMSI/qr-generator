@@ -6,9 +6,7 @@ interface AttendeeTableProps {
   attendees: Attendee[];
 }
 
-export default function AttendeeTable({
-  attendees,
-}: AttendeeTableProps) {
+export default function AttendeeTable({ attendees }: AttendeeTableProps) {
   if (!attendees.length) {
     return null;
   }

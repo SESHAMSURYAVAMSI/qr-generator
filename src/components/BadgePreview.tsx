@@ -1,22 +1,12 @@
 "use client";
 
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import QRCode from "qrcode";
 
-import {
-  FileImage,
-  Loader2,
-} from "lucide-react";
+import { FileImage, Loader2 } from "lucide-react";
 
-import type {
-  Attendee,
-  BadgeConfiguration,
-} from "@/types/badge";
+import type { Attendee, BadgeConfiguration } from "@/types/badge";
 
 interface BadgePreviewProps {
   attendee?: Attendee | null;
@@ -54,21 +44,15 @@ export default function BadgePreview({
    * the preview will safely use DEFAULT_CONFIGURATION.
    */
 
-  const safeConfiguration =
-    configuration ??
-    DEFAULT_CONFIGURATION;
+  const safeConfiguration = configuration ?? DEFAULT_CONFIGURATION;
 
-  const [badgeImage, setBadgeImage] =
-    useState<string | null>(null);
+  const [badgeImage, setBadgeImage] = useState<string | null>(null);
 
-  const [qrImage, setQrImage] =
-    useState<string | null>(null);
+  const [qrImage, setQrImage] = useState<string | null>(null);
 
-  const [loadingBadge, setLoadingBadge] =
-    useState(false);
+  const [loadingBadge, setLoadingBadge] = useState(false);
 
-  const [pdfError, setPdfError] =
-    useState<string | null>(null);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   /*
    * ============================================================
@@ -76,9 +60,7 @@ export default function BadgePreview({
    * ============================================================
    */
 
-  const normalizeFieldName = (
-    value: string
-  ) => {
+  const normalizeFieldName = (value: string) => {
     return value
       .trim()
       .toLowerCase()
@@ -95,10 +77,9 @@ export default function BadgePreview({
 
   const getCustomFieldValue = (
     currentAttendee: Attendee,
-    fieldName?: string
+    fieldName?: string,
   ) => {
-    const requestedField =
-      fieldName?.trim();
+    const requestedField = fieldName?.trim();
 
     if (!requestedField) {
       return "";
@@ -108,10 +89,7 @@ export default function BadgePreview({
      * First try exact field name.
      */
 
-    const exactValue =
-      currentAttendee[
-        requestedField
-      ];
+    const exactValue = currentAttendee[requestedField];
 
     if (exactValue?.trim()) {
       return exactValue.trim();
@@ -131,27 +109,14 @@ export default function BadgePreview({
      * Both will match.
      */
 
-    const normalizedTarget =
-      normalizeFieldName(
-        requestedField
-      );
+    const normalizedTarget = normalizeFieldName(requestedField);
 
-    const matchingKey =
-      Object.keys(
-        currentAttendee
-      ).find(
-        (key) =>
-          normalizeFieldName(
-            key
-          ) === normalizedTarget
-      );
+    const matchingKey = Object.keys(currentAttendee).find(
+      (key) => normalizeFieldName(key) === normalizedTarget,
+    );
 
     if (matchingKey) {
-      return (
-        currentAttendee[
-          matchingKey
-        ]?.trim() || ""
-      );
+      return currentAttendee[matchingKey]?.trim() || "";
     }
 
     return "";
@@ -178,14 +143,8 @@ export default function BadgePreview({
      * ========================================================
      */
 
-    if (
-      safeConfiguration.qrField ===
-      "registrationNumber"
-    ) {
-      return (
-        attendee.registrationNumber?.trim() ||
-        "NO-REGISTRATION"
-      );
+    if (safeConfiguration.qrField === "registrationNumber") {
+      return attendee.registrationNumber?.trim() || "NO-REGISTRATION";
     }
 
     /*
@@ -194,14 +153,8 @@ export default function BadgePreview({
      * ========================================================
      */
 
-    if (
-      safeConfiguration.qrField ===
-      "name"
-    ) {
-      return (
-        attendee.name?.trim() ||
-        "NO-NAME"
-      );
+    if (safeConfiguration.qrField === "name") {
+      return attendee.name?.trim() || "NO-NAME";
     }
 
     /*
@@ -210,14 +163,8 @@ export default function BadgePreview({
      * ========================================================
      */
 
-    if (
-      safeConfiguration.qrField ===
-      "code"
-    ) {
-      return (
-        attendee.code?.trim() ||
-        "NO-CODE"
-      );
+    if (safeConfiguration.qrField === "code") {
+      return attendee.code?.trim() || "NO-CODE";
     }
 
     /*
@@ -226,23 +173,17 @@ export default function BadgePreview({
      * ========================================================
      */
 
-    if (
-      safeConfiguration.qrField ===
-      "custom"
-    ) {
-      const customValue =
-        getCustomFieldValue(
-          attendee,
-          safeConfiguration.customQRField
-        );
+    if (safeConfiguration.qrField === "custom") {
+      const customValue = getCustomFieldValue(
+        attendee,
+        safeConfiguration.customQRField,
+      );
 
       if (customValue) {
         return customValue;
       }
 
-      if (
-        !safeConfiguration.customQRField?.trim()
-      ) {
+      if (!safeConfiguration.customQRField?.trim()) {
         return "SELECT-CUSTOM-FIELD";
       }
 
@@ -254,11 +195,7 @@ export default function BadgePreview({
      */
 
     return "PREVIEW-QR-001";
-  }, [
-    attendee,
-    safeConfiguration.qrField,
-    safeConfiguration.customQRField,
-  ]);
+  }, [attendee, safeConfiguration.qrField, safeConfiguration.customQRField]);
 
   /*
    * ============================================================
@@ -289,25 +226,17 @@ export default function BadgePreview({
       setQrImage(null);
 
       try {
-        const dataUrl =
-          await QRCode.toDataURL(
-            qrValue,
-            {
-              width: 500,
-              margin: 2,
-              errorCorrectionLevel:
-                "H",
-            }
-          );
+        const dataUrl = await QRCode.toDataURL(qrValue, {
+          width: 500,
+          margin: 2,
+          errorCorrectionLevel: "H",
+        });
 
         if (!cancelled) {
           setQrImage(dataUrl);
         }
       } catch (error) {
-        console.error(
-          "QR generation error:",
-          error
-        );
+        console.error("QR generation error:", error);
 
         if (!cancelled) {
           setQrImage(null);
@@ -320,10 +249,7 @@ export default function BadgePreview({
     return () => {
       cancelled = true;
     };
-  }, [
-    qrValue,
-    safeConfiguration.qr,
-  ]);
+  }, [qrValue, safeConfiguration.qr]);
 
   /*
    * ============================================================
@@ -333,8 +259,7 @@ export default function BadgePreview({
 
   useEffect(() => {
     let cancelled = false;
-    let objectUrl: string | null =
-      null;
+    let objectUrl: string | null = null;
 
     async function loadBadge() {
       if (!badgeFile) {
@@ -349,8 +274,7 @@ export default function BadgePreview({
       setBadgeImage(null);
 
       try {
-        const fileType =
-          badgeFile.type.toLowerCase();
+        const fileType = badgeFile.type.toLowerCase();
 
         /*
          * ======================================================
@@ -359,24 +283,15 @@ export default function BadgePreview({
          */
 
         if (
-          fileType ===
-            "image/png" ||
-          fileType ===
-            "image/jpeg" ||
-          fileType ===
-            "image/jpg" ||
-          fileType ===
-            "image/webp"
+          fileType === "image/png" ||
+          fileType === "image/jpeg" ||
+          fileType === "image/jpg" ||
+          fileType === "image/webp"
         ) {
-          objectUrl =
-            URL.createObjectURL(
-              badgeFile
-            );
+          objectUrl = URL.createObjectURL(badgeFile);
 
           if (!cancelled) {
-            setBadgeImage(
-              objectUrl
-            );
+            setBadgeImage(objectUrl);
           }
 
           return;
@@ -389,64 +304,38 @@ export default function BadgePreview({
          */
 
         if (
-          fileType ===
-            "application/pdf" ||
-          badgeFile.name
-            .toLowerCase()
-            .endsWith(".pdf")
+          fileType === "application/pdf" ||
+          badgeFile.name.toLowerCase().endsWith(".pdf")
         ) {
-          const pdfjs =
-            await import(
-              "pdfjs-dist/legacy/build/pdf.mjs"
-            );
+          const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
-          pdfjs.GlobalWorkerOptions.workerSrc =
-            "/pdf.worker.min.mjs";
+          pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
-          const buffer =
-            await badgeFile.arrayBuffer();
+          const buffer = await badgeFile.arrayBuffer();
 
-          const loadingTask =
-            pdfjs.getDocument({
-              data: new Uint8Array(
-                buffer
-              ),
-            });
+          const loadingTask = pdfjs.getDocument({
+            data: new Uint8Array(buffer),
+          });
 
-          const pdf =
-            await loadingTask.promise;
+          const pdf = await loadingTask.promise;
 
-          const page =
-            await pdf.getPage(1);
+          const page = await pdf.getPage(1);
 
-          const viewport =
-            page.getViewport({
-              scale: 2.5,
-            });
+          const viewport = page.getViewport({
+            scale: 2.5,
+          });
 
-          const canvas =
-            document.createElement(
-              "canvas"
-            );
+          const canvas = document.createElement("canvas");
 
-          const context =
-            canvas.getContext("2d");
+          const context = canvas.getContext("2d");
 
           if (!context) {
-            throw new Error(
-              "Unable to create PDF canvas."
-            );
+            throw new Error("Unable to create PDF canvas.");
           }
 
-          canvas.width =
-            Math.ceil(
-              viewport.width
-            );
+          canvas.width = Math.ceil(viewport.width);
 
-          canvas.height =
-            Math.ceil(
-              viewport.height
-            );
+          canvas.height = Math.ceil(viewport.height);
 
           await page.render({
             canvasContext: context,
@@ -454,34 +343,22 @@ export default function BadgePreview({
             viewport,
           }).promise;
 
-          const dataUrl =
-            canvas.toDataURL(
-              "image/png"
-            );
+          const dataUrl = canvas.toDataURL("image/png");
 
           if (!cancelled) {
-            setBadgeImage(
-              dataUrl
-            );
+            setBadgeImage(dataUrl);
           }
 
           return;
         }
 
-        throw new Error(
-          "Unsupported badge format."
-        );
+        throw new Error("Unsupported badge format.");
       } catch (error) {
-        console.error(
-          "Badge preview error:",
-          error
-        );
+        console.error("Badge preview error:", error);
 
         if (!cancelled) {
           setPdfError(
-            error instanceof Error
-              ? error.message
-              : "Unable to preview badge."
+            error instanceof Error ? error.message : "Unable to preview badge.",
           );
         }
       } finally {
@@ -497,9 +374,7 @@ export default function BadgePreview({
       cancelled = true;
 
       if (objectUrl) {
-        URL.revokeObjectURL(
-          objectUrl
-        );
+        URL.revokeObjectURL(objectUrl);
       }
     };
   }, [badgeFile]);
@@ -510,9 +385,7 @@ export default function BadgePreview({
    * ============================================================
    */
 
-  const name =
-    attendee?.name?.trim() ||
-    "Attendee Name";
+  const name = attendee?.name?.trim() || "Attendee Name";
 
   /*
    * ============================================================
@@ -520,8 +393,7 @@ export default function BadgePreview({
    * ============================================================
    */
 
-  const isLongName =
-    name.length > 27;
+  const isLongName = name.length > 27;
 
   /*
    * ============================================================
@@ -537,13 +409,10 @@ export default function BadgePreview({
             <FileImage className="h-7 w-7 text-zinc-400" />
           </div>
 
-          <h3 className="text-sm font-semibold">
-            Badge Preview
-          </h3>
+          <h3 className="text-sm font-semibold">Badge Preview</h3>
 
           <p className="mt-1 text-xs text-zinc-500">
-            Upload your badge template to
-            preview it here.
+            Upload your badge template to preview it here.
           </p>
         </div>
       </div>
@@ -562,9 +431,7 @@ export default function BadgePreview({
         <div className="text-center">
           <Loader2 className="mx-auto h-8 w-8 animate-spin text-zinc-500" />
 
-          <p className="mt-3 text-sm font-medium">
-            Loading badge...
-          </p>
+          <p className="mt-3 text-sm font-medium">Loading badge...</p>
         </div>
       </div>
     );
@@ -600,11 +467,8 @@ export default function BadgePreview({
 
   return (
     <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
-
       <div className="flex justify-center">
-
         <div className="relative w-full max-w-[520px] overflow-hidden rounded-xl bg-white shadow-xl">
-
           {/* ORIGINAL BADGE */}
 
           {badgeImage && (
@@ -639,16 +503,11 @@ export default function BadgePreview({
                 left-[8%]
                 w-[84%]
                 text-center
-                ${
-                  isLongName
-                    ? "top-[65%]"
-                    : "top-[61%]"
-                }
+                ${isLongName ? "top-[65%]" : "top-[61%]"}
               `}
             >
               <p className="text-[clamp(10px,2vw,17px)] font-medium leading-tight text-zinc-700">
-                {attendee?.registrationNumber ||
-                  "Registration No."}
+                {attendee?.registrationNumber || "Registration No."}
               </p>
             </div>
           )}
@@ -657,47 +516,39 @@ export default function BadgePreview({
               QR CODE
           ================================================== */}
 
-          {safeConfiguration.qr &&
-            qrImage && (
-              <div
-                className={`
+          {safeConfiguration.qr && qrImage && (
+            <div
+              className={`
                   absolute
                   left-1/2
                   w-[21%]
                   -translate-x-1/2
-                  ${
-                    isLongName
-                      ? "top-[72%]"
-                      : "top-[67%]"
-                  }
+                  ${isLongName ? "top-[72%]" : "top-[67%]"}
                 `}
-              >
-                <div className="aspect-square w-full bg-white p-[2%]">
-                  <img
-                    src={qrImage}
-                    alt={`QR code containing ${qrValue}`}
-                    className="block h-full w-full"
-                    draggable={false}
-                  />
-                </div>
+            >
+              <div className="aspect-square w-full bg-white p-[2%]">
+                <img
+                  src={qrImage}
+                  alt={`QR code containing ${qrValue}`}
+                  className="block h-full w-full"
+                  draggable={false}
+                />
               </div>
-            )}
+            </div>
+          )}
 
           {/* ==================================================
               CATEGORY
           ================================================== */}
 
-          {safeConfiguration.category &&
-            attendee?.category?.trim() && (
-              <div className="absolute left-[8%] top-[88%] w-[84%] text-center">
-                <p className="text-[clamp(9px,1.7vw,15px)] font-semibold uppercase tracking-wide text-zinc-700">
-                  {attendee.category}
-                </p>
-              </div>
-            )}
-
+          {safeConfiguration.category && attendee?.category?.trim() && (
+            <div className="absolute left-[8%] top-[88%] w-[84%] text-center">
+              <p className="text-[clamp(9px,1.7vw,15px)] font-semibold uppercase tracking-wide text-zinc-700">
+                {attendee.category}
+              </p>
+            </div>
+          )}
         </div>
-
       </div>
 
       {/* ======================================================
@@ -706,35 +557,27 @@ export default function BadgePreview({
 
       {safeConfiguration.qr && (
         <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-950">
-
           <div className="flex items-center justify-between gap-3">
-
             <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
               QR Value
             </p>
 
             <span className="rounded-full bg-emerald-50 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
-              {safeConfiguration.qrField ===
-              "registrationNumber"
+              {safeConfiguration.qrField === "registrationNumber"
                 ? "Registration"
-                : safeConfiguration.qrField ===
-                  "name"
-                ? "Name"
-                : safeConfiguration.qrField ===
-                  "code"
-                ? "Code"
-                : "Custom"}
+                : safeConfiguration.qrField === "name"
+                  ? "Name"
+                  : safeConfiguration.qrField === "code"
+                    ? "Code"
+                    : "Custom"}
             </span>
-
           </div>
 
           <p className="mt-1 break-all font-mono text-sm font-semibold">
             {qrValue}
           </p>
-
         </div>
       )}
-
     </div>
   );
 }
